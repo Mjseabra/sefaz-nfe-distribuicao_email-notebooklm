@@ -1,0 +1,18 @@
+[
+  {
+    "uuid": "9dc33d76-3d92-423b-aa3e-f01c185fa7b3",
+    "title": "Nfe - Informes Técnicos",
+    "url": "https://www.nfe.fazenda.gov.br/portal/listaConteudo.aspx?tipoConteudo=hXzemuyNHW4=",
+    "include_filters": ["#conteudoDinamico"],
+    "notification_urls": ["json://n8n:5678/webhook/alerta-zen"],
+    "notification_body": "{ \"title\": {{ watch_title|tojson }}, \"url\": {{ watch_url|tojson }}, \"diff\": {{ diff|tojson }} }"
+  },
+  {
+    "uuid": "d30337ed-58a5-43ab-9f98-2d882408a3d5",
+    "title": "Nfe - Notas Técnicas",
+    "url": "https://www.nfe.fazenda.gov.br/portal/listaConteudo.aspx?tipoConteudo=04BIflQt1aY=",
+    "include_filters": ["#conteudoDinamico"],
+    "notification_urls": ["json://n8n:5678/webhook/alerta-zen"],
+    "notification_body": "{ \"title\": {{ watch_title|tojson }}, \"url\": {{ watch_url|tojson }}, \"diff\": {{ diff|tojson }} }"
+  }
+]

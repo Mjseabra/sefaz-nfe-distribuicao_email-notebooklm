@@ -1,0 +1,2005 @@
+[
+  {
+    "updatedAt": "2026-11-03T21:50:38.026Z",
+    "createdAt": "2026-10-27T21:46:17.145Z",
+    "id": "2SvZmrqtG96GMlFS",
+    "name": "SEFAZ NF-e – Monitoramento e Aprovação Manual",
+    "description": null,
+    "active": true,
+    "isArchived": false,
+    "nodes": [
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "alerta-zen",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [
+          0,
+          0
+        ],
+        "id": "webhook-zen-01",
+        "name": "Webhook do Changedetection",
+        "webhookId": "alerta-zen"
+      },
+      {
+        "parameters": {
+          "fromEmail": "notificacoes-fiscais@exemplo.com.br",
+          "toEmail": "equipe-fiscal@exemplo.com.br,consultores@exemplo.com.br",
+          "subject": "=🔔 Atualização Fiscal ({{ $json.totalDocs }} arquivo(s))",
+          "html": "={{ $json.emailHtml }}",
+          "options": {
+            "appendAttribution": false,
+            "attachments": "={{ $json.attachmentKeys }}"
+          }
+        },
+        "type": "n8n-nodes-base.emailSend",
+        "typeVersion": 2.1,
+        "position": [
+          1280,
+          -128
+        ],
+        "id": "email-zen-02",
+        "name": "Enviar Email SMTP",
+        "webhookId": "cdd62beb-22c7-4688-a498-4395ec87506b",
+        "credentials": {
+          "smtp": {
+            "id": "bUGhqwwAwmXF7B6p",
+            "name": "SMTP account"
+          }
+        },
+        "onError": "continueErrorOutput"
+      },
+      {
+        "parameters": {
+          "url": "={{ JSON.parse($('Webhook do Changedetection').first().json.body.message).url }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Cookie",
+                "value": "AspxAutoDetectCookieSupport=1"
+              },
+              {
+                "name": "User-Agent",
+                "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+              }
+            ]
+          },
+          "options": {
+            "response": {
+              "response": {
+                "responseFormat": "text"
+              }
+            }
+          }
+        },
+        "id": "node-obter-pagina",
+        "name": "Obter Pagina",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.1,
+        "position": [
+          256,
+          0
+        ]
+      },
+      {
+        "parameters": {
+          "url": "={{ $json.href }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Cookie",
+                "value": "AspxAutoDetectCookieSupport=1"
+              },
+              {
+                "name": "User-Agent",
+                "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+              }
+            ]
+          },
+          "options": {
+            "response": {
+              "response": {
+                "responseFormat": "file",
+                "outputPropertyName": "anexo_arquivo"
+              }
+            }
+          }
+        },
+        "id": "node-baixar-pdf",
+        "name": "Baixar Arquivo",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.1,
+        "position": [
+          768,
+          0
+        ]
+      },
+      {
+        "parameters": {
+          "inputDataFieldName": "anexo_arquivo",
+          "driveId": {
+            "__rl": true,
+            "mode": "list",
+            "value": "My Drive"
+          },
+          "folderId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "1GBUnMNiqua-jWjJ08CK8KcZjS-WoKYTB"
+          },
+          "options": {}
+        },
+        "id": "node-google-drive-upload",
+        "name": "Upload Google Drive",
+        "type": "n8n-nodes-base.googleDrive",
+        "typeVersion": 3,
+        "position": [
+          4400,
+          800
+        ],
+        "credentials": {
+          "googleDriveOAuth2Api": {
+            "id": "tlHY3yFwTT7HeaIp",
+            "name": "Google Drive account"
+          }
+        },
+        "onError": "continueErrorOutput"
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "http://notebooklm_receiver:8555/api/sync-notebooklm",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "Accept",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({ drive_file_id: $json.drive_file_id, document_title: $json.document_title, document_id: $json.document_id, mime_type: \"pdf\" }) }}",
+          "options": {
+            "response": {
+              "response": {
+                "responseFormat": "json"
+              }
+            },
+            "timeout": 60000
+          }
+        },
+        "id": "node-sync-notebooklm",
+        "name": "Sync NotebookLM",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.1,
+        "position": [
+          5552,
+          800
+        ],
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "nfeDaemonFlowB01",
+            "name": "NFE Daemon Flow B"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "chatId": "123456789",
+          "text": "=≡ƒöö <b>ATUALIZA├ç├âO FISCAL CONSOLIDADA</b>\nΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöü\n≡ƒôî <b>Portal:</b> {{ $('Preparar Documentos Aprovados').first().json.portalTitle }}\n\n≡ƒôä <b>Documentos Baixados:</b> {{ $('Preparar Documentos Aprovados').all().length }} arquivo(s)\n≡ƒôü <b>Google Drive:</b> Arquivado(s) na pasta da Receita\n≡ƒºá <b>NotebookLM:</b> Sincronizado com o caderno\nΓ£ë∩╕Å <b>E-mail:</b> E-mail ├║nico consolidado com todos os anexos enviado ├á equipe fiscal\nΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöü\n≡ƒæë <a href=\"{{ $('Preparar Documentos Aprovados').first().json.portalUrl }}\"><b>Acessar Portal da SEFAZ</b></a>",
+          "additionalFields": {
+            "appendAttribution": false,
+            "disable_web_page_preview": true,
+            "parse_mode": "HTML"
+          }
+        },
+        "id": "node-notificar-telegram",
+        "name": "Notificar Telegram",
+        "type": "n8n-nodes-base.telegram",
+        "typeVersion": 1.2,
+        "position": [
+          2560,
+          128
+        ],
+        "webhookId": "c9cf6583-4e8d-4bf1-b7cc-d7119054d0bd",
+        "disabled": true
+      },
+      {
+        "parameters": {
+          "jsCode": "const html = $json.data;\nconst webhookBody = $('Webhook do Changedetection').first().json.body;\nconst message = typeof webhookBody.message === 'string' ? JSON.parse(webhookBody.message) : webhookBody.message;\nconst diffText = message.diff || '';\n\n// Parse de todos os itens do HTML\nconst items = [];\nconst regex = /<p><a[^>]*href=[\"']([^\"']*)[\"'][^>]*>(.*?)<\\/a>(?:<br\\s*\\/?>\\s*([\\s\\S]*?))?<\\/p>/gi;\n\nlet match;\nwhile ((match = regex.exec(html)) !== null) {\n  const href = match[1];\n  const titleHtml = match[2];\n  const descHtml = match[3] || '';\n  \n  if (href.includes('exibirArquivo')) {\n    const title = titleHtml.replace(/<[^>]+>/g, '').trim();\n    const desc = descHtml.replace(/<[^>]+>/g, '').trim();\n    items.push({\n      href: href.startsWith('http') ? href : `https://www.nfe.fazenda.gov.br/portal/${href.replace(/^portal\\//, '')}`,\n      relativeHref: href,\n      title: title,\n      desc: desc\n    });\n  }\n}\n\n// Extrair t├¡tulos removidos do diff\nconst lines = diffText.split('\\n').map(l => l.trim()).filter(l => l.length > 0);\nconst removedTitles = [];\nfor (const line of lines) {\n  if (line.startsWith('(removed)')) {\n    const clean = line.replace(/^\\(removed\\)\\s*/, '').trim();\n    if (clean.includes('Nota T├⌐cnica') || clean.includes('NT') || clean.includes('Tabela') || clean.includes('IT') || clean.includes('Informe') || clean.includes('Schema') || clean.includes('Pacote') || clean.includes('Esquema')) {\n      removedTitles.push(clean);\n    }\n  }\n}\n\nreturn [{\n  json: {\n    items: items,\n    totalExtracted: items.length,\n    portalTitle: message.title || 'Nota Fiscal Eletr├┤nica',\n    portalUrl: message.url || 'https://www.nfe.fazenda.gov.br',\n    diff: diffText,\n    removedList: removedTitles\n  }\n}];\n"
+        },
+        "id": "node-identificar-documentos",
+        "name": "Extrair Itens da P├ígina",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          512,
+          0
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "// Agrupa todos os bin├írios de todos os itens em um ├║nico item para o n├│ de E-mail\nconst allItems = $input.all();\n\nconst binaryData = {};\nconst docList = [];\n\nfor (let i = 0; i < allItems.length; i++) {\n  const item = allItems[i];\n  const bin = item.binary || {};\n  \n  // Pegar qualquer bin├írio dispon├¡vel no item\n  for (const binKey of Object.keys(bin)) {\n    const file = bin[binKey];\n    const newKey = `anexo_${i}`;\n    binaryData[newKey] = file;\n    docList.push({\n      name: file.fileName || item.json.title || `Documento_${i+1}`,\n      size: file.fileSize || ''\n    });\n  }\n}\n\n// Pegar dados do primeiro item para o contexto\nconst firstJson = allItems[0]?.json || {};\n\nreturn [{\n  json: {\n    ...firstJson,\n    docsDownloaded: docList,\n    totalDocs: docList.length,\n    attachmentKeys: Object.keys(binaryData).join(',')\n  },\n  binary: binaryData\n}];\n"
+        },
+        "id": "node-agrupar-anexos",
+        "name": "Agrupar Anexos para E-mail",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1024,
+          -128
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "=https://www.googleapis.com/drive/v3/files/{{ $json.id }}/copy",
+          "authentication": "predefinedCredentialType",
+          "nodeCredentialType": "googleDriveOAuth2Api",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={\n  \"name\": \"{{ ($json.name || 'Tabela Sefaz').replace(/\\.xlsx?$/i, '') }}\",\n  \"mimeType\": \"application/vnd.google-apps.spreadsheet\",\n  \"parents\": [\"1GBUnMNiqua-jWjJ08CK8KcZjS-WoKYTB\"]\n}",
+          "options": {}
+        },
+        "id": "node-converter-google-sheets",
+        "name": "Converter para Google Sheets",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.1,
+        "position": [
+          1536,
+          -128
+        ],
+        "credentials": {
+          "googleDriveOAuth2Api": {
+            "id": "tlHY3yFwTT7HeaIp",
+            "name": "Google Drive account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "operation": "move",
+          "fileId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "={{ $('Upload Google Drive').item.json.id }}"
+          },
+          "driveId": {
+            "__rl": true,
+            "mode": "list",
+            "value": "My Drive"
+          },
+          "folderId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "1mTPWh7uFp6zMf9tntUDQ59XxkWdMvSJp"
+          }
+        },
+        "id": "node-mover-xls-arquivos",
+        "name": "Mover XLS para Arquivos",
+        "type": "n8n-nodes-base.googleDrive",
+        "typeVersion": 3,
+        "position": [
+          1792,
+          32
+        ],
+        "credentials": {
+          "googleDriveOAuth2Api": {
+            "id": "tlHY3yFwTT7HeaIp",
+            "name": "Google Drive account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "http://notebooklm_receiver:8555/api/rename-superseded",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={\n  \"removed\": {{ JSON.stringify($('Preparar Documentos Aprovados').first().json.removedList || []) }},\n  \"prefix\": \"[Z -Duplicadas Red] \"\n}",
+          "options": {
+            "timeout": 60000
+          }
+        },
+        "id": "node-renomear-superados",
+        "name": "Renomear Superados NotebookLM",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.1,
+        "position": [
+          2304,
+          128
+        ],
+        "continueOnFail": true
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "http://notebooklm_receiver:8555/api/sync-zip-schemas",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={\n  \"url\": \"{{ $('Preparar Documentos Aprovados').item.json.href }}\",\n  \"name\": \"{{ $json.name || $('Baixar Arquivo').item.binary.anexo_arquivo.fileName || 'Pacote_Schemas.zip' }}\"\n}",
+          "options": {
+            "timeout": 120000
+          }
+        },
+        "id": "node-processar-schemas-zip",
+        "name": "Processar Schemas ZIP",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.1,
+        "position": [
+          1536,
+          224
+        ],
+        "continueOnFail": true
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "http://notebooklm_receiver:8555/api/catalog/filter-new",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={\n  \"items\": {{ JSON.stringify($json.items) }},\n  \"max_days_old\": 5\n}",
+          "options": {
+            "timeout": 30000
+          }
+        },
+        "id": "node-filtrar-catalogo",
+        "name": "Filtrar Novos pelo Cat├ílogo",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.1,
+        "position": [
+          512,
+          128
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "const filterResult = $input.first().json;\nconst context = $('Extrair Itens da P├ígina').first().json;\n\nif (!filterResult.items || filterResult.items.length === 0) {\n  // Zero documentos novos: encerra silenciosamente sem downloads ou envios\n  return [];\n}\n\nif (filterResult.circuit_breaker) {\n  // Trava de P├ónico (mais de 10 docs): retorna item especial para alerta\n  return [{\n    json: {\n      alertOnly: true,\n      circuitBreaker: true,\n      count: filterResult.count,\n      portalTitle: context.portalTitle,\n      portalUrl: context.portalUrl,\n      removedList: context.removedList\n    }\n  }];\n}\n\n// Retorna cada documento aprovado para a esteira normal\nreturn filterResult.items.map((doc, idx) => ({\n  json: {\n    ...doc,\n    itemIndex: idx,\n    totalItems: filterResult.items.length,\n    portalTitle: context.portalTitle,\n    portalUrl: context.portalUrl,\n    diff: context.diff,\n    removedList: context.removedList\n  }\n}));\n"
+        },
+        "id": "node-preparar-documentos",
+        "name": "Preparar Documentos Aprovados",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          688,
+          128
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "http://notebooklm_receiver:8555/api/catalog/register",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={\n  \"titles\": {{ JSON.stringify($('Preparar Documentos Aprovados').all().map(i => i.json.title)) }}\n}",
+          "options": {
+            "timeout": 30000
+          }
+        },
+        "id": "node-registrar-catalogo",
+        "name": "Registrar no Cat├ílogo Local",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.1,
+        "position": [
+          2560,
+          -80
+        ],
+        "continueOnFail": true
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": false,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 1
+            },
+            "conditions": [
+              {
+                "id": "cond-is-sheet",
+                "leftValue": "={{ $json.name || $('Baixar Arquivo').item.binary.anexo_arquivo.fileName || '' }}",
+                "rightValue": "xls",
+                "operator": {
+                  "type": "string",
+                  "operation": "contains"
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "id": "node-if-planilha",
+        "name": "E Planilha?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          1280,
+          128
+        ]
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": false,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 1
+            },
+            "conditions": [
+              {
+                "id": "cond-is-zip",
+                "leftValue": "={{ $json.name || $('Baixar Arquivo').item.binary.anexo_arquivo.fileName || '' }}",
+                "rightValue": "zip",
+                "operator": {
+                  "type": "string",
+                  "operation": "contains"
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "id": "node-if-zip",
+        "name": "E Arquivo ZIP?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          1536,
+          32
+        ]
+      },
+      {
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "jsCode": "const doc=$json;const binary=$binary?.anexo_arquivo;if(!binary)throw new Error('Downloaded PDF binary anexo_arquivo is missing');const fileName=binary.fileName||'';if(!/\\.pdf$/i.test(fileName))throw new Error(`Only PDF files can enter the approval queue: ${fileName||'unknown file'}`);const title=String(doc.title||fileName).trim();const text=`${doc.date||''} ${doc.desc||''} ${title}`;let isoDate=null;const iso=text.match(/\\b(20\\d{2})[-/.](\\d{1,2})[-/.](\\d{1,2})\\b/);const numeric=text.match(/\\b(\\d{1,2})[/.](\\d{1,2})[/.](\\d{4})\\b/);const months=text.match(/\\b(\\d{1,2})[\\s/_-](jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)[a-z]*[\\s/_-](\\d{4})\\b/i);if(iso)isoDate=`${iso[1]}-${iso[2].padStart(2,'0')}-${iso[3].padStart(2,'0')}`;else if(numeric)isoDate=`${numeric[3]}-${numeric[2].padStart(2,'0')}-${numeric[1].padStart(2,'0')}`;else if(months){const month={jan:'01',fev:'02',mar:'03',abr:'04',mai:'05',jun:'06',jul:'07',ago:'08',set:'09',out:'10',nov:'11',dez:'12'}[months[2].toLowerCase().slice(0,3)];isoDate=`${months[3]}-${month}-${months[1].padStart(2,'0')}`;}const parsed=isoDate&&new Date(`${isoDate}T00:00:00Z`);if(!parsed||Number.isNaN(parsed.getTime())||parsed.toISOString().slice(0,10)!==isoDate)throw new Error(`Could not determine a valid ISO publication date for ${title}`);const identity=title.normalize('NFKD').replace(/[\\u0300-\\u036f]/g,'').toLowerCase().replace(/\\.pdf$/i,'').replace(/[^a-z0-9]+/g,'');if(!identity)throw new Error(`Could not derive a stable document identity for ${title}`);const documentId=`${identity}-${isoDate}`;return {json:{title,date:isoDate,url:String(doc.href||''),document_id:documentId,file_path:`/home/ubuntu/nfe-pdf-cache/${documentId}.pdf`},binary:{anexo_arquivo:binary}};"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          960,
+          320
+        ],
+        "id": "nfe-prepare-queue-file",
+        "name": "Preparar Arquivo da Fila"
+      },
+      {
+        "parameters": {
+          "operation": "write",
+          "fileName": "={{ $json.file_path }}",
+          "dataPropertyName": "anexo_arquivo",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.readWriteFile",
+        "typeVersion": 1,
+        "position": [
+          1184,
+          320
+        ],
+        "id": "nfe-save-shared-pdf",
+        "name": "Salvar PDF Compartilhado"
+      },
+      {
+        "parameters": {
+          "jsCode": "const items=$input.all().map(i=>({title:i.json.title,date:i.json.date,url:i.json.url,file_path:i.json.file_path,document_id:i.json.document_id}));if(!items.length)throw new Error('No eligible PDF documents were downloaded');return [{json:{items}}];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1424,
+          320
+        ],
+        "id": "nfe-prepare-queue-payload",
+        "name": "Preparar Payload da Fila"
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "http://notebooklm_receiver:8555/api/queue/add",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "Accept",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify($json) }}",
+          "options": {
+            "response": {
+              "response": {
+                "responseFormat": "json"
+              }
+            },
+            "timeout": 30000
+          }
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.1,
+        "position": [
+          1648,
+          320
+        ],
+        "id": "nfe-add-queue",
+        "name": "Adicionar Documentos a Fila",
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "nfeDaemonFlowA01",
+            "name": "NFE Daemon Flow A"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "const result=$json.body&&typeof $json.body==='object'?$json.body:$json;if(result.ok!==true)throw new Error('Queue add did not return a successful JSON acknowledgement');return [{json:{ok:true,status:result.batch_id?'pending':'already_queued',batch_id:result.batch_id||null,added:result.added,skipped:result.skipped}}];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1872,
+          320
+        ],
+        "id": "nfe-queue-ack",
+        "name": "Confirmar Lote para Hermes"
+      },
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "nfe-aprovado-interno",
+          "authentication": "headerAuth",
+          "responseMode": "responseNode",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [
+          0,
+          928
+        ],
+        "id": "nfe-flow-b-webhook",
+        "name": "Webhook do Fluxo B",
+        "webhookId": "nfe-aprovado-interno",
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "nfeHermesWebhk01",
+            "name": "NFE Hermes Webhook"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "const p=$json.body;if(!p||typeof p!=='object'||Array.isArray(p)||Object.keys(p).length!==1||typeof p.batch_id!=='string'||!p.batch_id.trim())return [{json:{valid:false,code:'INVALID_BATCH_ID',message:'Request body must contain only a non-empty batch_id'}}];return [{json:{valid:true,batch_id:p.batch_id.trim()}}];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          480,
+          912
+        ],
+        "id": "nfe-validate-batch-request",
+        "name": "Validar Payload Hermes"
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 2
+            },
+            "conditions": [
+              {
+                "id": "nfe-valid-batch-shape-condition",
+                "leftValue": "={{ $json.valid }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "equals"
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          704,
+          912
+        ],
+        "id": "nfe-valid-batch-shape",
+        "name": "Validar Formato do Payload"
+      },
+      {
+        "parameters": {
+          "respondWith": "json",
+          "responseBody": "={{ { ok: false, error: { code: $json.code || 'INVALID_REQUEST', message: $json.message || 'Invalid request' } } }}",
+          "options": {
+            "responseCode": 400,
+            "responseHeaders": {
+              "entries": [
+                {
+                  "name": "Content-Type",
+                  "value": "application/json"
+                }
+              ]
+            }
+          }
+        },
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.4,
+        "position": [
+          944,
+          1104
+        ],
+        "id": "nfe-respond-bad-request",
+        "name": "Responder Payload Invalido"
+      },
+      {
+        "parameters": {
+          "url": "={{ 'http://notebooklm_receiver:8555/api/queue/list?state=approved&batch_id=' + encodeURIComponent($('Validar Payload Hermes').first().json.batch_id) }}",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "Accept",
+                "value": "application/json"
+              }
+            ]
+          },
+          "options": {
+            "response": {
+              "response": {
+                "responseFormat": "json"
+              }
+            },
+            "timeout": 30000
+          }
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.1,
+        "position": [
+          944,
+          880
+        ],
+        "id": "nfe-get-approved-batch",
+        "name": "Consultar Lote Aprovado",
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "nfeDaemonFlowB01",
+            "name": "NFE Daemon Flow B"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "jsCode": "const r=$json.body&&typeof $json.body==='object'?$json.body:$json;const id=$('Validar Payload Hermes').first().json.batch_id;const b=Array.isArray(r.batches)?r.batches.find(x=>x.batch_id===id&&x.status==='approved'):null;if(r.ok!==true||!b||!Array.isArray(b.items)||!b.items.length)return [{json:{valid:false,code:'BATCH_NOT_APPROVED',message:'Daemon did not confirm this batch as approved'}}];const steps=['email','google_drive','notebooklm'];const states=steps.flatMap(s=>b.items.map(i=>i.delivery?.[s]||'not_started'));if(states.some(s=>s!=='not_started'))return [{json:{valid:false,code:'DELIVERY_REQUIRES_RECONCILIATION',message:'Distribution already started; do not replay external effects'}}];return [{json:{valid:true,batch_id:b.batch_id,items:b.items}}];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1184,
+          880
+        ],
+        "id": "nfe-validate-approved-batch",
+        "name": "Validar Lote Aprovado"
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 2
+            },
+            "conditions": [
+              {
+                "id": "nfe-approved-gate-condition",
+                "leftValue": "={{ $json.valid }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "equals"
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          1408,
+          880
+        ],
+        "id": "nfe-approved-gate",
+        "name": "Lote Aprovado Confirmado"
+      },
+      {
+        "parameters": {
+          "respondWith": "json",
+          "responseBody": "={{ { ok: false, error: { code: $json.code || 'BATCH_NOT_APPROVED', message: $json.message || 'Daemon did not confirm approval' } } }}",
+          "options": {
+            "responseCode": 409,
+            "responseHeaders": {
+              "entries": [
+                {
+                  "name": "Content-Type",
+                  "value": "application/json"
+                }
+              ]
+            }
+          }
+        },
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.4,
+        "position": [
+          1632,
+          1104
+        ],
+        "id": "nfe-respond-unapproved",
+        "name": "Responder Lote Nao Aprovado"
+      },
+      {
+        "parameters": {
+          "respondWith": "json",
+          "responseBody": "={{ { ok: true, batch_id: $json.batch_id, status: 'accepted' } }}",
+          "options": {
+            "responseCode": 202,
+            "responseHeaders": {
+              "entries": [
+                {
+                  "name": "Content-Type",
+                  "value": "application/json"
+                }
+              ]
+            }
+          }
+        },
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.4,
+        "position": [
+          1632,
+          800
+        ],
+        "id": "nfe-respond-accepted",
+        "name": "Confirmar Aceite do Fluxo B"
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "http://notebooklm_receiver:8555/api/queue/resolve",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "Accept",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({batch_id:$('Validar Lote Aprovado').first().json.batch_id,action:'record_step',step:'email',outcome:'started'}) }}",
+          "options": {
+            "response": {
+              "response": {
+                "responseFormat": "json"
+              }
+            },
+            "timeout": 30000
+          }
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.1,
+        "position": [
+          1872,
+          800
+        ],
+        "id": "nfe-email-started",
+        "name": "Registrar Inicio do Email",
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "nfeDaemonFlowB01",
+            "name": "NFE Daemon Flow B"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "url": "={{ 'http://notebooklm_receiver:8555/api/queue/list?state=approved&batch_id=' + encodeURIComponent($('Validar Lote Aprovado').first().json.batch_id) }}",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "Accept",
+                "value": "application/json"
+              }
+            ]
+          },
+          "options": {
+            "response": {
+              "response": {
+                "responseFormat": "json"
+              }
+            },
+            "timeout": 30000
+          }
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.1,
+        "position": [
+          2112,
+          800
+        ],
+        "id": "nfe-email-approved-files",
+        "name": "Buscar Arquivos para E-mail",
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "nfeDaemonFlowB01",
+            "name": "NFE Daemon Flow B"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "const r=$json.body&&typeof $json.body==='object'?$json.body:$json;const expected=$('Validar Lote Aprovado').first().json.batch_id;const b=Array.isArray(r.batches)?r.batches.find(x=>x.batch_id===expected&&x.status==='approved'):null;if(r.ok!==true||!b||!Array.isArray(b.items)||!b.items.length)throw new Error('Approved batch is no longer available from the daemon');return b.items.map(i=>({json:{batch_id:b.batch_id,title:i.title,date:i.date,url:i.url,file_path:i.file_path,document_id:i.document_id}}));"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          2336,
+          800
+        ],
+        "id": "nfe-email-items",
+        "name": "Preparar Documentos para E-mail"
+      },
+      {
+        "parameters": {
+          "fileSelector": "={{ $json.file_path }}",
+          "options": {
+            "dataPropertyName": "anexo_arquivo"
+          }
+        },
+        "type": "n8n-nodes-base.readWriteFile",
+        "typeVersion": 1,
+        "position": [
+          2560,
+          800
+        ],
+        "id": "nfe-email-read-pdfs",
+        "name": "Ler PDFs para E-mail"
+      },
+      {
+        "parameters": {
+          "jsCode": "const files=$input.all();\nif(!files.length)throw new Error('Approved batch contains no PDF files');\nconst meta=$('Preparar Documentos para E-mail').all().map(i=>i.json);\nif(meta.length!==files.length)throw new Error('Approved batch metadata does not match PDF files');\nconst esc=v=>String(v??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',\"'\":'&#39;'}[c]));\nconst binary={},documents=[];\nfor(let n=0;n<files.length;n++){\n  const source=files[n].binary?.anexo_arquivo;\n  if(!source)throw new Error('PDF binary missing for '+meta[n].title);\n  binary['anexo_'+n]=source;\n  documents.push({title:meta[n].title,date:meta[n].date,url:meta[n].url,file_path:meta[n].file_path,document_id:meta[n].document_id});\n}\nconst fmt=d=>{const m=/^(\\d{4})-(\\d{2})-(\\d{2})$/.exec(d||'');return m?m[3]+'/'+m[2]+'/'+m[1]:esc(d);};\nconst rows=documents.map(i=>'<li style=\"margin:0 0 8px 0;\"><b>[NOVO]</b> '+esc(i.title)+'</li>').join('');\nconst total=documents.length;\nconst head=total>1?total+' Atualizações Detectadas':'Atualização Detectada';\nconst html='<div style=\"font-family:\\'Segoe UI\\',Arial,sans-serif;max-width:680px;color:#2c3e50;line-height:1.6;\">'\n+'<div style=\"border-bottom:2px solid #00a88f;padding-bottom:10px;margin-bottom:16px;\">'\n+'<span style=\"background-color:#e6f7f5;color:#00806c;font-size:11px;font-weight:700;padding:4px 8px;border-radius:4px;text-transform:uppercase;letter-spacing:0.5px;\">Monitoramento Automático • '+head+'</span>'\n+'<h2 style=\"margin:8px 0 0 0;font-size:18px;color:#0b3c5d;\">Portal da Nota Fiscal Eletrônica</h2></div>'\n+'<p style=\"font-size:14px;margin:0 0 12px 0;\">Foi detectada uma nova publicação oficial no portal monitorado. Foram anexados a este e-mail <b>'+total+' arquivo(s)</b> correspondente(s) às atualizações:</p>'\n+'<div style=\"background-color:#f8fafc;border:1px solid #e2e8f0;border-left:4px solid #00a88f;border-radius:6px;padding:16px;margin-bottom:20px;font-size:14px;color:#1e293b;\"><ul style=\"margin:0;padding-left:20px;list-style:none;\">'+rows+'</ul></div>'\n+'<div style=\"margin-bottom:28px;\"><a href=\"https://www.nfe.fazenda.gov.br/portal/principal.aspx\" target=\"_blank\" style=\"background-color:#0b3c5d;color:#ffffff;text-decoration:none;padding:10px 18px;border-radius:5px;font-size:13px;font-weight:600;display:inline-block;\">Acessar Página Oficial &rarr;</a></div>'\n+'<p>Atenciosamente,</p>'+\"<table border=\\\"0\\\" cellpadding=\\\"0\\\" cellspacing=\\\"0\\\" width=\\\"600\\\" style=\\\"width: 600px; max-width: 600px; background-color: #ffffff; border-collapse: collapse;\\\"><tr><td style=\\\"padding: 15px 0 10px 0;\\\"><table border=\\\"0\\\" cellpadding=\\\"0\\\" cellspacing=\\\"0\\\" width=\\\"100%\\\" style=\\\"border-collapse: collapse;\\\"><tr><td valign=\\\"middle\\\" width=\\\"140\\\" style=\\\"width: 140px; padding-right: 5px;\\\"><a href=\\\"https://exemplo.com.br\\\" target=\\\"_blank\\\" style=\\\"text-decoration: none;\\\"><img src=\\\"https://exemplo.com.br/wp-content/uploads/2026/06/logo_mpl.png\\\"alt=\\\"MPL\\\"width=\\\"135\\\" height=\\\"30\\\"style=\\\"display: block; border: 0; outline: none; width: 135px; height: 30px;\\\" /></a></td><td valign=\\\"middle\\\" width=\\\"20\\\" style=\\\"width: 20px; text-align: center;\\\"><table border=\\\"0\\\" cellpadding=\\\"0\\\" cellspacing=\\\"0\\\" height=\\\"55\\\" style=\\\"margin: 0 auto;\\\"><tr><td width=\\\"1\\\" style=\\\"width: 1px; background-color: #00376b; font-size: 1px; line-height: 1px;\\\">&nbsp;</td></tr></table></td><td valign=\\\"middle\\\" style=\\\"text-align: left; padding-left: 5px;\\\"><div style=\\\"font-family: 'Segoe UI', Helvetica, Arial, sans-serif; font-size: 20px; font-weight: bold; color: #00376b; line-height: 1.2; margin: 0;\\\">Equipe Fiscal / Consultoria</div><div style=\\\"font-family: 'Segoe UI', Helvetica, Arial, sans-serif; font-size: 14px; font-weight: 500; color: #00376b; line-height: 1.4; margin: 3px 0 0 0;\\\">Consultor Financeiro Sênior</div></td><td valign=\\\"top\\\" align=\\\"right\\\" style=\\\"text-align: right; white-space: nowrap;\\\"><a href=\\\"https://www.linkedin.com/company/mpl-corporate-software/\\\" target=\\\"_blank\\\" style=\\\"text-decoration: none;\\\"><img src=\\\"https://exemplo.com.br/wp-content/uploads/2026/06/icon_linkedin.png\\\"alt=\\\"LinkedIn\\\"width=\\\"24\\\" height=\\\"24\\\"style=\\\"display: inline-block; border: 0; outline: none; width: 24px; height: 24px; margin-left: 5px;\\\" /></a><a href=\\\"https://www.instagram.com/mpl_corporate_software/\\\" target=\\\"_blank\\\" style=\\\"text-decoration: none;\\\"><img src=\\\"https://exemplo.com.br/wp-content/uploads/2026/06/icon_instagram.png\\\"alt=\\\"Instagram\\\"width=\\\"24\\\" height=\\\"24\\\"style=\\\"display: inline-block; border: 0; outline: none; width: 24px; height: 24px; margin-left: 5px;\\\" /></a><a href=\\\"https://www.youtube.com/channel/UCVsLH6x9u-CF8R2yxLmvBZA/featured\\\" target=\\\"_blank\\\" style=\\\"text-decoration: none;\\\"><img src=\\\"https://exemplo.com.br/wp-content/uploads/2026/06/icon_youtube.png\\\"alt=\\\"YouTube\\\"width=\\\"24\\\" height=\\\"24\\\"style=\\\"display: inline-block; border: 0; outline: none; width: 24px; height: 24px; margin-left: 5px;\\\" /></a><a href=\\\"https://exemplo.com.br/blog/\\\" target=\\\"_blank\\\" style=\\\"text-decoration: none;\\\"><img src=\\\"https://exemplo.com.br/wp-content/uploads/2026/06/icon_blog.png\\\"alt=\\\"Blog\\\"width=\\\"24\\\" height=\\\"24\\\"style=\\\"display: inline-block; border: 0; outline: none; width: 24px; height: 24px; margin-left: 5px;\\\" /></a></td></tr></table></td></tr><tr><td style=\\\"padding: 8px 0 5px 0;\\\"><img src=\\\"https://exemplo.com.br/wp-content/uploads/2026/06/slogan.png\\\"alt=\\\"Inove com inteligência. Opere com segurança.\\\"width=\\\"565\\\" height=\\\"29\\\"style=\\\"display: block; border: 0; outline: none; width: 565px; height: 29px;\\\" /></td></tr></table>\"+'</div>';\nreturn [{json:{batch_id:files[0].json.batch_id||meta[0].batch_id,documents,totalDocs:total,attachmentKeys:Object.keys(binary).join(','),emailHtml:html},binary}];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          2800,
+          800
+        ],
+        "id": "nfe-email-aggregate",
+        "name": "Agrupar PDFs Aprovados para E-mail"
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "http://notebooklm_receiver:8555/api/queue/resolve",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "Accept",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({batch_id:$('Validar Lote Aprovado').first().json.batch_id,action:'record_step',step:'email',outcome:'succeeded'}) }}",
+          "options": {
+            "response": {
+              "response": {
+                "responseFormat": "json"
+              }
+            },
+            "timeout": 30000
+          }
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.1,
+        "position": [
+          3264,
+          800
+        ],
+        "id": "nfe-email-succeeded",
+        "name": "Registrar Sucesso do E-mail",
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "nfeDaemonFlowB01",
+            "name": "NFE Daemon Flow B"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "http://notebooklm_receiver:8555/api/queue/resolve",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "Accept",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({batch_id:$('Validar Lote Aprovado').first().json.batch_id,action:'record_step',step:'google_drive',outcome:'started'}) }}",
+          "options": {
+            "response": {
+              "response": {
+                "responseFormat": "json"
+              }
+            },
+            "timeout": 30000
+          }
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.1,
+        "position": [
+          3488,
+          800
+        ],
+        "id": "nfe-drive-started",
+        "name": "Registrar Inicio do Google Drive",
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "nfeDaemonFlowB01",
+            "name": "NFE Daemon Flow B"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "url": "={{ 'http://notebooklm_receiver:8555/api/queue/list?state=approved&batch_id=' + encodeURIComponent($('Validar Lote Aprovado').first().json.batch_id) }}",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "Accept",
+                "value": "application/json"
+              }
+            ]
+          },
+          "options": {
+            "response": {
+              "response": {
+                "responseFormat": "json"
+              }
+            },
+            "timeout": 30000
+          }
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.1,
+        "position": [
+          3712,
+          800
+        ],
+        "id": "nfe-drive-approved-files",
+        "name": "Buscar Arquivos para Google Drive",
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "nfeDaemonFlowB01",
+            "name": "NFE Daemon Flow B"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "const r=$json.body&&typeof $json.body==='object'?$json.body:$json;const expected=$('Validar Lote Aprovado').first().json.batch_id;const b=Array.isArray(r.batches)?r.batches.find(x=>x.batch_id===expected&&x.status==='approved'):null;if(r.ok!==true||!b||!Array.isArray(b.items)||!b.items.length)throw new Error('Approved batch is no longer available from the daemon');return b.items.map(i=>({json:{batch_id:b.batch_id,title:i.title,date:i.date,url:i.url,file_path:i.file_path,document_id:i.document_id}}));"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          3952,
+          800
+        ],
+        "id": "nfe-drive-items",
+        "name": "Preparar Documentos para Google Drive"
+      },
+      {
+        "parameters": {
+          "fileSelector": "={{ $json.file_path }}",
+          "options": {
+            "dataPropertyName": "anexo_arquivo"
+          }
+        },
+        "type": "n8n-nodes-base.readWriteFile",
+        "typeVersion": 1,
+        "position": [
+          4176,
+          800
+        ],
+        "id": "nfe-drive-read-pdfs",
+        "name": "Ler PDFs para Google Drive"
+      },
+      {
+        "parameters": {
+          "jsCode": "const u=$('Upload Google Drive').all();if(!u.length||u.some(i=>!i.json?.id))throw new Error('Google Drive did not return an ID for every approved PDF');return [{json:{batch_id:$('Validar Lote Aprovado').first().json.batch_id,action:'record_step',step:'google_drive',outcome:'succeeded'}}];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          4640,
+          800
+        ],
+        "id": "nfe-drive-success-body",
+        "name": "Preparar Sucesso do Google Drive"
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "http://notebooklm_receiver:8555/api/queue/resolve",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "Accept",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify($json) }}",
+          "options": {
+            "response": {
+              "response": {
+                "responseFormat": "json"
+              }
+            },
+            "timeout": 30000
+          }
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.1,
+        "position": [
+          4864,
+          800
+        ],
+        "id": "nfe-drive-succeeded",
+        "name": "Registrar Sucesso do Google Drive",
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "nfeDaemonFlowB01",
+            "name": "NFE Daemon Flow B"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "http://notebooklm_receiver:8555/api/queue/resolve",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "Accept",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({batch_id:$('Validar Lote Aprovado').first().json.batch_id,action:'record_step',step:'notebooklm',outcome:'started'}) }}",
+          "options": {
+            "response": {
+              "response": {
+                "responseFormat": "json"
+              }
+            },
+            "timeout": 30000
+          }
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.1,
+        "position": [
+          5104,
+          800
+        ],
+        "id": "nfe-notebook-started",
+        "name": "Registrar Inicio do NotebookLM",
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "nfeDaemonFlowB01",
+            "name": "NFE Daemon Flow B"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "const u=$('Upload Google Drive').all(),d=$('Preparar Documentos para Google Drive').all();if(u.length!==d.length)throw new Error('Drive upload results do not match approved batch documents');return u.map((i,n)=>({json:{drive_file_id:i.json.id,document_title:d[n].json.title,document_id:d[n].json.document_id}}));"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          5328,
+          800
+        ],
+        "id": "nfe-restore-drive-ids",
+        "name": "Restaurar IDs do Google Drive"
+      },
+      {
+        "parameters": {
+          "jsCode": "if(!$input.all().length)throw new Error('NotebookLM produced no synchronization results');return [{json:{batch_id:$('Validar Lote Aprovado').first().json.batch_id,action:'record_step',step:'notebooklm',outcome:'succeeded'}}];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          6240,
+          800
+        ],
+        "id": "nfe-notebook-success-body",
+        "name": "Preparar Sucesso do NotebookLM"
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "http://notebooklm_receiver:8555/api/queue/resolve",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "Accept",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify($json) }}",
+          "options": {
+            "response": {
+              "response": {
+                "responseFormat": "json"
+              }
+            },
+            "timeout": 30000
+          }
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.1,
+        "position": [
+          6480,
+          800
+        ],
+        "id": "nfe-notebook-succeeded",
+        "name": "Registrar Sucesso do NotebookLM",
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "nfeDaemonFlowB01",
+            "name": "NFE Daemon Flow B"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "http://notebooklm_receiver:8555/api/queue/resolve",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "Accept",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({batch_id:$('Validar Lote Aprovado').first().json.batch_id,action:'complete'}) }}",
+          "options": {
+            "response": {
+              "response": {
+                "responseFormat": "json"
+              }
+            },
+            "timeout": 30000
+          }
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.1,
+        "position": [
+          6704,
+          800
+        ],
+        "id": "nfe-complete-approved-batch",
+        "name": "Concluir Lote Aprovado",
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "nfeDaemonFlowB01",
+            "name": "NFE Daemon Flow B"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "http://notebooklm_receiver:8555/api/queue/resolve",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "Accept",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({batch_id:$('Validar Lote Aprovado').first().json.batch_id,action:'record_step',step:'email',outcome:'uncertain'}) }}",
+          "options": {
+            "response": {
+              "response": {
+                "responseFormat": "json"
+              }
+            },
+            "timeout": 30000
+          }
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.1,
+        "position": [
+          1520,
+          -176
+        ],
+        "id": "nfe-email-uncertain",
+        "name": "Registrar Falha Ambigua do E-mail",
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "nfeDaemonFlowB01",
+            "name": "NFE Daemon Flow B"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "http://notebooklm_receiver:8555/api/queue/resolve",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "Accept",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({batch_id:$('Validar Lote Aprovado').first().json.batch_id,action:'record_step',step:'google_drive',outcome:'uncertain'}) }}",
+          "options": {
+            "response": {
+              "response": {
+                "responseFormat": "json"
+              }
+            },
+            "timeout": 30000
+          }
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.1,
+        "position": [
+          4640,
+          912
+        ],
+        "id": "nfe-drive-uncertain",
+        "name": "Registrar Falha Ambigua do Google Drive",
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "nfeDaemonFlowB01",
+            "name": "NFE Daemon Flow B"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "http://notebooklm_receiver:8555/api/queue/resolve",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "Accept",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify($json) }}",
+          "options": {
+            "response": {
+              "response": {
+                "responseFormat": "json"
+              }
+            },
+            "timeout": 30000
+          }
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.1,
+        "position": [
+          6240,
+          1088
+        ],
+        "id": "nfe-notebook-uncertain",
+        "name": "Registrar Falha Ambigua do NotebookLM",
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "nfeDaemonFlowB01",
+            "name": "NFE Daemon Flow B"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "const inputs=$input.all();const sourceItems=$('Restaurar IDs do Google Drive').all();if(!inputs.length)throw new Error('NotebookLM returned no synchronization results');const failed=[];const messages=[];for(let index=0;index<inputs.length;index++){const item=inputs[index],raw=item.json||{};const pair=Array.isArray(item.pairedItem)?item.pairedItem[0]?.item:item.pairedItem?.item;const source=sourceItems[Number.isInteger(pair)?pair:index]?.json||{};const body=raw.body&&typeof raw.body==='object'?raw.body:(raw.error?.response?.body||raw.error?.body||raw);const detail=typeof body.error==='string'?body.error:(raw.error?.message||raw.message||JSON.stringify(body.error||body));const isFailure=Boolean(raw.error)||body.status==='error'||Number(raw.statusCode||body.statusCode)>=400;if(isFailure){const title=String(body.title||raw.title||source.document_title||'Documento sem t?tulo').trim();const drive_file_id=body.drive_file_id||raw.drive_file_id||source.drive_file_id;failed.push({title,drive_file_id});messages.push(`${title}: ${String(detail||'NotebookLM returned an error').replace(/\\s+/g,' ').slice(0,400)}`);}}if(!failed.length)return [{json:{success:true,batch_id:$('Validar Lote Aprovado').first().json.batch_id}}];const unique=[];const seen=new Set();for(const item of failed){const key=`${item.title}::${item.drive_file_id||''}`;if(!seen.has(key)){seen.add(key);unique.push(item);}}return [{json:{batch_id:$('Validar Lote Aprovado').first().json.batch_id,action:'record_step',step:'notebooklm',outcome:'uncertain',failure:{items:unique,message:[...new Set(messages)].join(' | ').slice(0,2000)}}}];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          5792,
+          800
+        ],
+        "id": "nfe-consolidate-notebook-result",
+        "name": "Consolidar Resultado NotebookLM"
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 1
+            },
+            "conditions": [
+              {
+                "id": "nfe-notebook-sync-success",
+                "leftValue": "={{ $json.success }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          6016,
+          800
+        ],
+        "id": "nfe-notebook-sync-result",
+        "name": "NotebookLM sincronizado?"
+      }
+    ],
+    "connections": {
+      "Webhook do Changedetection": {
+        "main": [
+          [
+            {
+              "node": "Obter Pagina",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Obter Pagina": {
+        "main": [
+          [
+            {
+              "node": "Extrair Itens da P├ígina",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Baixar Arquivo": {
+        "main": [
+          [
+            {
+              "node": "Preparar Arquivo da Fila",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Upload Google Drive": {
+        "main": [
+          [
+            {
+              "node": "Preparar Sucesso do Google Drive",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Registrar Falha Ambigua do Google Drive",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Sync NotebookLM": {
+        "main": [
+          [
+            {
+              "node": "Consolidar Resultado NotebookLM",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Extrair Itens da P├ígina": {
+        "main": [
+          [
+            {
+              "node": "Filtrar Novos pelo Cat├ílogo",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Filtrar Novos pelo Cat├ílogo": {
+        "main": [
+          [
+            {
+              "node": "Preparar Documentos Aprovados",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Preparar Documentos Aprovados": {
+        "main": [
+          [
+            {
+              "node": "Baixar Arquivo",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Preparar Arquivo da Fila": {
+        "main": [
+          [
+            {
+              "node": "Salvar PDF Compartilhado",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Salvar PDF Compartilhado": {
+        "main": [
+          [
+            {
+              "node": "Preparar Payload da Fila",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Preparar Payload da Fila": {
+        "main": [
+          [
+            {
+              "node": "Adicionar Documentos a Fila",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Adicionar Documentos a Fila": {
+        "main": [
+          [
+            {
+              "node": "Confirmar Lote para Hermes",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Confirmar Lote para Hermes": {
+        "main": []
+      },
+      "Webhook do Fluxo B": {
+        "main": [
+          [
+            {
+              "node": "Validar Payload Hermes",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Validar Payload Hermes": {
+        "main": [
+          [
+            {
+              "node": "Validar Formato do Payload",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Validar Formato do Payload": {
+        "main": [
+          [
+            {
+              "node": "Consultar Lote Aprovado",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Responder Payload Invalido",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Responder Payload Invalido": {
+        "main": []
+      },
+      "Consultar Lote Aprovado": {
+        "main": [
+          [
+            {
+              "node": "Validar Lote Aprovado",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Validar Lote Aprovado": {
+        "main": [
+          [
+            {
+              "node": "Lote Aprovado Confirmado",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Lote Aprovado Confirmado": {
+        "main": [
+          [
+            {
+              "node": "Confirmar Aceite do Fluxo B",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Responder Lote Nao Aprovado",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Responder Lote Nao Aprovado": {
+        "main": []
+      },
+      "Confirmar Aceite do Fluxo B": {
+        "main": [
+          [
+            {
+              "node": "Registrar Inicio do Email",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Registrar Inicio do Email": {
+        "main": [
+          [
+            {
+              "node": "Buscar Arquivos para E-mail",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Buscar Arquivos para E-mail": {
+        "main": [
+          [
+            {
+              "node": "Preparar Documentos para E-mail",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Preparar Documentos para E-mail": {
+        "main": [
+          [
+            {
+              "node": "Ler PDFs para E-mail",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Ler PDFs para E-mail": {
+        "main": [
+          [
+            {
+              "node": "Agrupar PDFs Aprovados para E-mail",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Agrupar PDFs Aprovados para E-mail": {
+        "main": [
+          [
+            {
+              "node": "Enviar Email SMTP",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Enviar Email SMTP": {
+        "main": [
+          [
+            {
+              "node": "Registrar Sucesso do E-mail",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Registrar Falha Ambigua do E-mail",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Registrar Sucesso do E-mail": {
+        "main": [
+          [
+            {
+              "node": "Registrar Inicio do Google Drive",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Registrar Inicio do Google Drive": {
+        "main": [
+          [
+            {
+              "node": "Buscar Arquivos para Google Drive",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Buscar Arquivos para Google Drive": {
+        "main": [
+          [
+            {
+              "node": "Preparar Documentos para Google Drive",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Preparar Documentos para Google Drive": {
+        "main": [
+          [
+            {
+              "node": "Ler PDFs para Google Drive",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Ler PDFs para Google Drive": {
+        "main": [
+          [
+            {
+              "node": "Upload Google Drive",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Preparar Sucesso do Google Drive": {
+        "main": [
+          [
+            {
+              "node": "Registrar Sucesso do Google Drive",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Registrar Sucesso do Google Drive": {
+        "main": [
+          [
+            {
+              "node": "Registrar Inicio do NotebookLM",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Registrar Inicio do NotebookLM": {
+        "main": [
+          [
+            {
+              "node": "Restaurar IDs do Google Drive",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Restaurar IDs do Google Drive": {
+        "main": [
+          [
+            {
+              "node": "Sync NotebookLM",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Preparar Sucesso do NotebookLM": {
+        "main": [
+          [
+            {
+              "node": "Registrar Sucesso do NotebookLM",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Registrar Sucesso do NotebookLM": {
+        "main": [
+          [
+            {
+              "node": "Concluir Lote Aprovado",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Concluir Lote Aprovado": {
+        "main": []
+      },
+      "Registrar Falha Ambigua do E-mail": {
+        "main": []
+      },
+      "Registrar Falha Ambigua do Google Drive": {
+        "main": []
+      },
+      "Registrar Falha Ambigua do NotebookLM": {
+        "main": []
+      },
+      "Consolidar Resultado NotebookLM": {
+        "main": [
+          [
+            {
+              "node": "NotebookLM sincronizado?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "NotebookLM sincronizado?": {
+        "main": [
+          [
+            {
+              "node": "Preparar Sucesso do NotebookLM",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Registrar Falha Ambigua do NotebookLM",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "binaryMode": "separate"
+    },
+    "staticData": null,
+    "meta": {
+      "templateCredsSetupCompleted": true
+    },
+    "nodeGroups": [],
+    "pinData": {},
+    "versionId": "4a5d8b4f-f908-47de-800e-c460681df5e5",
+    "activeVersionId": "4a5d8b4f-f908-47de-800e-c460681df5e5",
+    "versionCounter": 60,
+    "triggerCount": 2,
+    "sourceWorkflowId": null,
+    "tags": [],
+    "shared": [],
+    "versionMetadata": {
+      "name": "Version 4a5d8b4f",
+      "description": ""
+    }
+  }
+]

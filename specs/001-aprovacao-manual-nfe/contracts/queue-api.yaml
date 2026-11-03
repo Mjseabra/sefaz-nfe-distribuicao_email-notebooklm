@@ -1,0 +1,420 @@
+openapi: 3.1.0
+info:
+  title: NFe Pending Queue API
+  version: 1.0.0
+  description: >
+    Internal-only JSON API owned by the Python receiver. All routes are reachable
+    only over the Docker network rede-automacao and require role-scoped service
+    authentication. Success and error responses, including framework-generated API
+    errors, must be structured JSON.
+servers:
+  - url: http://notebooklm_receiver:8555
+    description: Internal Docker service address; confirm deployed service DNS before implementation.
+security:
+  - bearerAuth: []
+paths:
+  /api/queue/add:
+    post:
+      operationId: addQueueBatch
+      summary: Add a batch of eligible SEFAZ documents
+      description: >
+        Called by n8n Flux A after recency/catalog filtering and PDF download.
+        Duplicate document IDs are ignored idempotently. File paths must resolve
+        inside the configured PDF staging directory. Requires the Flux A service role.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [items]
+              properties:
+                items:
+                  type: array
+                  minItems: 1
+                  items:
+                    $ref: '#/components/schemas/DocumentInput'
+      responses:
+        '201':
+          description: A new pending batch was created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QueueMutationResult'
+        '200':
+          description: Request was an idempotent retry or all documents already existed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QueueMutationResult'
+        '400':
+          $ref: '#/components/responses/JsonError'
+        '401':
+          $ref: '#/components/responses/JsonError'
+        '403':
+          $ref: '#/components/responses/JsonError'
+        '422':
+          $ref: '#/components/responses/JsonError'
+        '409':
+          $ref: '#/components/responses/JsonError'
+        '500':
+          $ref: '#/components/responses/JsonError'
+
+  /api/queue/list:
+    get:
+      operationId: listQueueBatches
+      summary: List pending or approved batches
+      description: >
+        Hermes reads state=pending and processes only the oldest batch, and reads
+        state=notifications to deliver stored failure reports. Flux B reads
+        state=approved and may request a specific batch_id. Notification reports
+        contain titles and error details, not file paths. Pending and notification
+        reads require the Hermes role; approved reads require the Flux B role.
+      parameters:
+        - name: state
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [pending, approved, notifications]
+        - name: batch_id
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Matching batches and their document metadata.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/QueueList'
+                  - $ref: '#/components/schemas/FailureNotifications'
+        '400':
+          $ref: '#/components/responses/JsonError'
+        '401':
+          $ref: '#/components/responses/JsonError'
+        '403':
+          $ref: '#/components/responses/JsonError'
+        '422':
+          $ref: '#/components/responses/JsonError'
+        '404':
+          $ref: '#/components/responses/JsonError'
+        '500':
+          $ref: '#/components/responses/JsonError'
+
+  /api/queue/resolve:
+    post:
+      operationId: resolveQueueBatch
+      summary: Approve, reject, record or acknowledge a delivery step, or complete a batch
+      description: >
+        Hermes may submit approve or reject only after validating a Telegram reply
+        from chat 123456789. Approval moves pending work to approved rather than
+        destroying it. Flux B records ordered delivery steps and completes a batch
+        only after all steps and catalog persistence succeed. Credentials are
+        role-scoped: Flux A may add; Hermes may decide and acknowledge delivered
+        failure reports; Flux B may read/advance approved batches and complete them;
+        an operator-only role may reconcile an uncertain delivery step. A failure
+        report is accepted only with an uncertain NotebookLM step.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: '#/components/schemas/DecisionRequest'
+                - $ref: '#/components/schemas/DeliveryStepRequest'
+                - $ref: '#/components/schemas/AcknowledgeNotificationRequest'
+                - $ref: '#/components/schemas/CompleteRequest'
+      responses:
+        '200':
+          description: Idempotent transition result and current batch state.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResolveResult'
+        '400':
+          $ref: '#/components/responses/JsonError'
+        '401':
+          $ref: '#/components/responses/JsonError'
+        '403':
+          $ref: '#/components/responses/JsonError'
+        '422':
+          $ref: '#/components/responses/JsonError'
+        '404':
+          $ref: '#/components/responses/JsonError'
+        '409':
+          $ref: '#/components/responses/JsonError'
+        '500':
+          $ref: '#/components/responses/JsonError'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: Internal service credential supplied through deployment secrets, never committed.
+  schemas:
+    DocumentInput:
+      type: object
+      additionalProperties: false
+      required: [title, date, url, file_path]
+      properties:
+        title:
+          type: string
+          minLength: 1
+        date:
+          type: string
+          format: date
+        url:
+          type: string
+          format: uri
+        file_path:
+          type: string
+          minLength: 1
+          description: Must resolve under the configured temporary PDF directory.
+        document_id:
+          type: string
+          description: Stable identifier following the deployed catalog's identity rules.
+    DecisionRequest:
+      type: object
+      additionalProperties: false
+      required: [batch_id, action, chat_id]
+      properties:
+        batch_id:
+          type: string
+          minLength: 1
+        action:
+          type: string
+          enum: [approve, reject]
+        chat_id:
+          type: integer
+          const: 123456789
+          description: Required for audit; accepted only with Hermes service credentials.
+    DeliveryStepRequest:
+      type: object
+      additionalProperties: false
+      required: [batch_id, action, step, outcome]
+      properties:
+        batch_id:
+          type: string
+          minLength: 1
+        action:
+          type: string
+          enum: [record_step]
+        step:
+          type: string
+          enum: [email, google_drive, notebooklm]
+        outcome:
+          type: string
+          enum: [started, succeeded, uncertain, not_started]
+          description: >
+            not_started may be set only by an authorized operator after confirming
+            that the external side effect did not occur.
+        failure:
+          $ref: '#/components/schemas/DeliveryFailure'
+          description: Present only for an uncertain NotebookLM step.
+    DeliveryFailure:
+      type: object
+      additionalProperties: false
+      required: [items, message]
+      properties:
+        items:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items:
+            type: object
+            additionalProperties: false
+            required: [title]
+            properties:
+              title:
+                type: string
+                minLength: 1
+              drive_file_id:
+                type: string
+                minLength: 1
+        message:
+          type: string
+          minLength: 1
+          maxLength: 2000
+    AcknowledgeNotificationRequest:
+      type: object
+      additionalProperties: false
+      required: [batch_id, action, notification_ids]
+      properties:
+        batch_id:
+          type: string
+          minLength: 1
+        action:
+          type: string
+          const: ack_notification
+        notification_ids:
+          type: array
+          minItems: 1
+          maxItems: 100
+          uniqueItems: true
+          items:
+            type: string
+            minLength: 1
+    CompleteRequest:
+      type: object
+      additionalProperties: false
+      required: [batch_id, action]
+      properties:
+        batch_id:
+          type: string
+          minLength: 1
+        action:
+          type: string
+          const: complete
+    QueueMutationResult:
+      type: object
+      required: [ok, batch_id, added, skipped]
+      properties:
+        ok:
+          type: boolean
+          const: true
+        batch_id:
+          type: [string, 'null']
+        added:
+          type: integer
+          minimum: 0
+        skipped:
+          type: integer
+          minimum: 0
+        items:
+          type: array
+          items:
+            type: object
+            required: [document_id, reason]
+            properties:
+              document_id:
+                type: string
+              reason:
+                type: string
+    QueueList:
+      type: object
+      required: [ok, state, batches]
+      properties:
+        ok:
+          type: boolean
+          const: true
+        state:
+          type: string
+          enum: [pending, approved]
+        batches:
+          type: array
+          items:
+            $ref: '#/components/schemas/Batch'
+    FailureNotifications:
+      type: object
+      required: [ok, state, notifications]
+      properties:
+        ok:
+          type: boolean
+          const: true
+        state:
+          type: string
+          const: notifications
+        notifications:
+          type: array
+          items:
+            type: object
+            required: [notification_id, batch_id, step, message, items, created_at]
+            properties:
+              notification_id:
+                type: string
+              batch_id:
+                type: string
+              step:
+                type: string
+                const: notebooklm
+              message:
+                type: string
+              items:
+                type: array
+                items:
+                  type: object
+                  required: [title]
+                  properties:
+                    title:
+                      type: string
+                    drive_file_id:
+                      type: string
+              created_at:
+                type: string
+                format: date-time
+    Batch:
+      type: object
+      required: [batch_id, status, created_at, items]
+      properties:
+        batch_id:
+          type: string
+        status:
+          type: string
+          enum: [pending, rejecting, approved, completing, rejected, complete, needs_reconciliation]
+        created_at:
+          type: string
+          format: date-time
+        decision_at:
+          type: string
+          format: date-time
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Document'
+    Document:
+      allOf:
+        - $ref: '#/components/schemas/DocumentInput'
+        - type: object
+          required: [document_id]
+          properties:
+            document_id:
+              type: string
+            delivery:
+              type: object
+              additionalProperties:
+                type: string
+                enum: [not_started, started, succeeded, uncertain]
+    ResolveResult:
+      type: object
+      required: [ok, action, batch_id, status]
+      properties:
+        ok:
+          type: boolean
+          const: true
+        action:
+          type: string
+        batch_id:
+          type: string
+        status:
+          type: string
+          enum: [pending, approved, rejected, complete, needs_reconciliation]
+    ApiError:
+      type: object
+      required: [ok, error]
+      properties:
+        ok:
+          type: boolean
+          const: false
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            details:
+              type: object
+              additionalProperties: true
+  responses:
+    JsonError:
+      description: Structured JSON error; HTML responses are prohibited.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'

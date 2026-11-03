@@ -1,0 +1,17 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+.env.*
+!.env.example
+.pytest_cache/
+.coverage
+*.tmp
+fila_pendencias.json
+notebooklm_catalog.json
+.DS_Store
+Thumbs.db
+*.swp
+.vscode/
+.idea/
